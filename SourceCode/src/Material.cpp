@@ -1,5 +1,7 @@
 #include "tracer/Material.h"
 
+#include <variant>
+
 Material::Material(const Texture &texture, const Albedo &albedo, const MaterialType &type, const bool smoothShading,
                    const float ior)
     : texture{&texture}, albedo{albedo}, type{type}, smoothShading{smoothShading}, ior{ior} {};
@@ -26,5 +28,10 @@ bool Material::hasTexture() const {
 }
 
 Color Material::getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const {
-  return this->hasTexture() ? texture->getColor(triangle, barycentricCoordinates) : this->albedo;
+  if (this->hasTexture()) {
+    return std::visit([&](const auto &texture) { return texture.getColor(triangle, barycentricCoordinates); },
+                      *texture);
+  } else {
+    return this->albedo;
+  }
 }

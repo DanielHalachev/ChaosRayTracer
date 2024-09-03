@@ -318,10 +318,10 @@ Color RayTracer::calculateDiffusion(const Ray &ray, const unsigned int depth,
 
     if (!shadowRayIntersection) {
       float directLightContribution = (static_cast<float>(light.intentsity) / sphereArea * angle);
-      finalColor += directLightContribution *
-                    mesh.material.getColor(*intersectionInformation.triangle,
-                                           Vector(intersectionInformation.u, intersectionInformation.v,
-                                                  1.0f - intersectionInformation.u - intersectionInformation.v));
+      Color temp = mesh.material.getColor(*intersectionInformation.triangle,
+                                          Vector(intersectionInformation.u, intersectionInformation.v,
+                                                 1.0f - intersectionInformation.u - intersectionInformation.v));
+      finalColor += directLightContribution * temp;
     }
   }
   Color indirectLightContribution(0, 0, 0);

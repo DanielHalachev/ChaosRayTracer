@@ -49,7 +49,7 @@ struct IntersectionInformation {
 struct Scene {
   SceneSettings sceneSettings;
   Camera camera;
-  std::vector<Texture *> textures;
+  std::vector<Texture> textures;
   std::vector<Material> materials;
   std::vector<Light> lights;
   std::vector<Mesh> objects;
@@ -61,6 +61,4 @@ struct Scene {
 
   Scene(const Scene &other) = delete;
   Scene &operator=(const Scene &other) = delete;
-
-  ~Scene();
 };

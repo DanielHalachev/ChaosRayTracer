@@ -1,31 +1,32 @@
 #pragma once
 
 #include <string>
+#include <variant>
 
 #include "tracer/Color.h"
 #include "tracer/Triangle.h"
 
-class Texture {
- public:
-  const std::string name;
+class TextureBase {
+ protected:
+  std::string name;
+  TextureBase(const std::string &name);
 
  public:
-  Texture() = default;
-  explicit Texture(const std::string &name);
-  virtual const Color getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const = 0;
-  virtual ~Texture() = default;
+  const std::string &getName() const;
+  TextureBase(const TextureBase &other) = default;
+  TextureBase &operator=(const TextureBase &other) = default;
 };
 
-class AlbedoTexture : public Texture {
+class AlbedoTexture : public TextureBase {
  private:
   Albedo albedo;
 
  public:
   AlbedoTexture(const std::string &name, const Albedo &albedo);
-  virtual const Color getColor(const Triangle & /*triangle*/, const Vector & /*barycentricCoordinates*/) const;
+  const Color getColor(const Triangle & /*triangle*/, const Vector & /*barycentricCoordinates*/) const;
 };
 
-class EdgeTexture : public Texture {
+class EdgeTexture : public TextureBase {
  private:
   Color innerColor;
   Color edgeColor;
@@ -33,10 +34,10 @@ class EdgeTexture : public Texture {
 
  public:
   EdgeTexture(const std::string &name, const Color &innerColor, const Color &edgeColor, const float width);
-  virtual const Color getColor(const Triangle & /*triangle*/, const Vector &barycentricCoordinates) const;
+  const Color getColor(const Triangle & /*triangle*/, const Vector &barycentricCoordinates) const;
 };
 
-class CheckerTexture : public Texture {
+class CheckerTexture : public TextureBase {
  private:
   Color colorA;
   Color colorB;
@@ -44,10 +45,10 @@ class CheckerTexture : public Texture {
 
  public:
   CheckerTexture(const std::string &name, const Color &colorA, const Color &colorB, const float squareSize);
-  virtual const Color getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const;
+  const Color getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const;
 };
 
-class BitmapTexture : public Texture {
+class BitmapTexture : public TextureBase {
  private:
   int width;
   int height;
@@ -56,5 +57,7 @@ class BitmapTexture : public Texture {
 
  public:
   BitmapTexture(const std::string &name, const std::string &filePath);
-  virtual const Color getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const;
+  const Color getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const;
 };
+
+using Texture = std::variant<AlbedoTexture, EdgeTexture, CheckerTexture, BitmapTexture>;

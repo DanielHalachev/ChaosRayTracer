@@ -7,6 +7,7 @@
 #include <fstream>
 #include <thread>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "rapidjson/document.h"
@@ -51,7 +52,7 @@ Scene SceneParser::parseScene(const std::string& pathToScene, const std::string&
   Camera camera = parseCameraSettings(document);
   result.camera = camera;
 
-  std::vector<Texture*> textures = parseTextures(document, sceneFolder);
+  std::vector<Texture> textures = parseTextures(document, sceneFolder);
   result.textures = std::move(textures);
 
   bool useTextures = !result.textures.empty();
@@ -149,8 +150,8 @@ std::vector<Light> SceneParser::parseLightSettings(const rapidjson::Document& do
   return lights;
 }
 
-std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& document, const std::string& sceneFolder) {
-  std::vector<Texture*> textures;
+std::vector<Texture> SceneParser::parseTextures(const rapidjson::Document& document, const std::string& sceneFolder) {
+  std::vector<Texture> textures;
   const rapidjson::Value& texturesValue = document.FindMember(SceneParser::TEXTURES)->value;
   if (texturesValue.IsNull() || !texturesValue.IsArray()) {
     return textures;
@@ -169,7 +170,7 @@ std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& docu
       const rapidjson::Value& textureAlbedoValue = texture.FindMember(SceneParser::ALBEDO)->value;
       assert(!textureAlbedoValue.IsNull() && textureAlbedoValue.IsArray());
       Albedo albedo = Albedo(loadFloatSTLVector(textureAlbedoValue.GetArray(), 3));
-      textures.push_back(new AlbedoTexture(textureName, albedo));
+      textures.push_back(AlbedoTexture(textureName, albedo));
     } else if (strcmp(textureTypeString, "edges") == 0) {
       const rapidjson::Value& innerColorValue = texture.FindMember("inner_color")->value;
       assert(!innerColorValue.IsNull() && innerColorValue.IsArray());
@@ -183,7 +184,7 @@ std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& docu
       assert(!edgeWidthValue.IsNull() && edgeWidthValue.IsFloat());
       float edgeWidth = edgeWidthValue.GetFloat();
 
-      textures.push_back(new EdgeTexture(textureName, innerColor, edgeColor, edgeWidth));
+      textures.push_back(EdgeTexture(textureName, innerColor, edgeColor, edgeWidth));
     } else if (strcmp(textureTypeString, "checker") == 0) {
       const rapidjson::Value& colorValueA = texture.FindMember("color_A")->value;
       assert(!colorValueA.IsNull() && colorValueA.IsArray());
@@ -197,13 +198,13 @@ std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& docu
       assert(!squareSizeValue.IsNull() && squareSizeValue.IsFloat());
       float squareSize = squareSizeValue.GetFloat();
 
-      textures.push_back(new CheckerTexture(textureName, colorA, colorB, squareSize));
+      textures.push_back(CheckerTexture(textureName, colorA, colorB, squareSize));
     } else if (strcmp(textureTypeString, "bitmap") == 0) {
       const rapidjson::Value& pathValue = texture.FindMember("file_path")->value;
       assert(!pathValue.IsNull() && pathValue.IsString());
       std::string path = pathValue.GetString();
 
-      textures.push_back(new BitmapTexture(textureName, sceneFolder + path));
+      textures.push_back(BitmapTexture(textureName, sceneFolder + path));
     } else {
       throw "Invalid material";
     }
@@ -212,8 +213,7 @@ std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& docu
   return textures;
 }
 
-std::vector<Material> SceneParser::parseMaterials(const rapidjson::Document& document,
-                                                  const std::vector<Texture*>& textures) {
+std::vector<Material> SceneParser::parseMaterials(const rapidjson::Document& document, std::vector<Texture>& textures) {
   std::vector<Material> materials;
   const rapidjson::Value& materialsValue = document.FindMember(SceneParser::MATERIALS)->value;
   if (!materialsValue.IsNull() && materialsValue.IsArray()) {
@@ -255,9 +255,9 @@ std::vector<Material> SceneParser::parseMaterials(const rapidjson::Document& doc
         assert(!textureNameValue.IsNull() && textureNameValue.IsString());
         const std::string textureName = textureNameValue.GetString();
         const Texture* texture = nullptr;
-        for (const Texture* t : textures) {
-          if (t->name == textureName) {
-            texture = t;
+        for (auto& t : textures) {
+          if (std::visit([&](const auto& txt) { return txt.getName(); }, t) == textureName) {
+            texture = &t;
             break;
           }
         }

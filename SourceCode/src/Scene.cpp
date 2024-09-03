@@ -56,9 +56,3 @@ Scene &Scene::operator=(Scene &&other) noexcept {
   }
   return *this;
 }
-
-Scene::~Scene() {
-  for (Texture *texture : this->textures) {
-    delete texture;
-  }
-}

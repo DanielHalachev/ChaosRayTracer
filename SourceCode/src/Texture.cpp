@@ -5,16 +5,20 @@
 
 #include "stb_image.h"
 
-Texture::Texture(const std::string &name) : name(name) {};
+TextureBase::TextureBase(const std::string &name) : name(name) {};
 
-AlbedoTexture::AlbedoTexture(const std::string &name, const Albedo &albedo) : Texture(name), albedo(albedo) {};
+const std::string &TextureBase::getName() const {
+  return this->name;
+}
+
+AlbedoTexture::AlbedoTexture(const std::string &name, const Albedo &albedo) : TextureBase(name), albedo(albedo) {};
 
 const Color AlbedoTexture::getColor(const Triangle & /*triangle*/, const Vector & /*barycentricCoordinates*/) const {
   return this->albedo;
 }
 
 EdgeTexture::EdgeTexture(const std::string &name, const Color &innerColor, const Color &edgeColor, const float width)
-    : Texture(name), innerColor(innerColor), edgeColor(edgeColor), width(width) {};
+    : TextureBase(name), innerColor(innerColor), edgeColor(edgeColor), width(width) {};
 
 const Color EdgeTexture::getColor(const Triangle & /*triangle*/, const Vector &barycentricCoordinates) const {
   if (barycentricCoordinates[0] < this->width || barycentricCoordinates[1] < this->width ||
@@ -26,7 +30,7 @@ const Color EdgeTexture::getColor(const Triangle & /*triangle*/, const Vector &b
 
 CheckerTexture::CheckerTexture(const std::string &name, const Color &colorA, const Color &colorB,
                                const float squareSize)
-    : Texture(name), colorA(colorA), colorB(colorB), squareSize{squareSize} {};
+    : TextureBase(name), colorA(colorA), colorB(colorB), squareSize{squareSize} {};
 
 const Color CheckerTexture::getColor(const Triangle &triangle, const Vector &barycentricCoordinates) const {
   Vector interpolatedCoordinates = barycentricCoordinates[0] * triangle[1].UV +
@@ -41,7 +45,7 @@ const Color CheckerTexture::getColor(const Triangle &triangle, const Vector &bar
   return this->colorB;
 }
 
-BitmapTexture::BitmapTexture(const std::string &name, const std::string &filePath) : Texture(name) {
+BitmapTexture::BitmapTexture(const std::string &name, const std::string &filePath) : TextureBase(name) {
   unsigned char *image = stbi_load(filePath.c_str(), &width, &height, &channels, 0);
   if (image == nullptr) {
     std::cerr << stbi_failure_reason() << '\n';
