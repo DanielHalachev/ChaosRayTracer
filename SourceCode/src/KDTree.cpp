@@ -1,8 +1,6 @@
 #include "tree/KDTree.h"
 
-#include <iostream>
 #include <stack>
-#include <string>
 
 #include "tracer/Ray.h"
 #include "tree/AccelerationStructure.h"
@@ -55,7 +53,7 @@ std::optional<IntersectionInformation> KDTree<Triangle>::intersect(const Ray &ra
     const TreeNode &currentNode = this->nodes[currentIndex];
     indexesToCheck.pop();
     if (currentNode.box.hasIntersection(ray)) {
-      if (!currentNode.indexes.empty()) {
+      if (currentNode.isLeaf()) {
         for (auto triangleIndex : currentNode.indexes) {
           std::optional<Intersection> intersection = ray.intersectWithTriangle(this->container->at(triangleIndex));
           if (intersection.has_value()) {
@@ -100,7 +98,7 @@ void KDTree<ObjectKDTreeSubTree>::build(const unsigned int parentIndex, const un
   firstChildElements.reserve(elementIndexes.size() / 2);
   secondChildElements.reserve(elementIndexes.size() / 2);
 
-  for (auto &elementIndex : elementIndexes) {
+  for (auto elementIndex : elementIndexes) {
     if (childBoxes.first.intersects(this->container->at(elementIndex).getBoundingBox())) {
       firstChildElements.push_back(elementIndex);
     }
@@ -134,7 +132,7 @@ std::optional<IntersectionInformation> KDTree<ObjectKDTreeSubTree>::intersect(co
     const TreeNode &currentNode = this->nodes[currentIndex];
     indexesToCheck.pop();
     if (currentNode.box.hasIntersection(ray)) {
-      if (!currentNode.indexes.empty()) {
+      if (currentNode.isLeaf()) {
         for (auto subTreeIndex : currentNode.indexes) {
           std::optional<IntersectionInformation> intersection = this->container->at(subTreeIndex).tree.intersect(ray);
           if (intersection.has_value()) {
@@ -166,13 +164,14 @@ std::optional<IntersectionInformation> KDTree<ObjectKDTreeSubTree>::intersect(co
   }
   const Mesh *intersectedObject = closestIntersection.object;
   const Triangle *intersectedTriangle = closestIntersection.triangle;
-  bool calculateUV = intersectedObject->material.smoothShading;
-  float u = 0;
-  float v = 0;
-#if (defined(BARYCENTRIC) && BARYCENTRIC) || (defined(USE_TEXTURES) && USE_TEXTURES)
+  bool calculateUV = intersectedObject->material.smoothShading || intersectedObject->material.hasTexture();
+
+#if (defined(BARYCENTRIC) && BARYCENTRIC)
   calculateUV = true;
-#endif  // BARYCENTRIC || USE_TEXTURES
+#endif  // BARYCENTRIC
   if (calculateUV) {
+    float u = 0;
+    float v = 0;
     std::pair<float, float> UV =
         intersectedTriangle->getBarycentricCoordinates(closestIntersection.intersection.hitPoint);
     u = UV.first;
@@ -183,10 +182,9 @@ std::optional<IntersectionInformation> KDTree<ObjectKDTreeSubTree>::intersect(co
            (*intersectedTriangle)[0].normal * (1 - u - v));
       closestIntersection.intersection.hitNormal.normalize();
     }
+    closestIntersection.u = u;
+    closestIntersection.v = v;
   }
-#if (defined(BARYCENTRIC) && BARYCENTRIC) || (defined(USE_TEXTURES) && USE_TEXTURES)
-  closestIntersection.u = u;
-  closestIntersection.v = v;
-#endif  // BARYCENTRIC || USE_TEXTURES
+
   return closestIntersection;
 }

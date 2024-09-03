@@ -20,6 +20,9 @@ class KDTree {
     std::vector<size_t> indexes;
 
     std::optional<IntersectionInformation> intersect(const Ray &ray) const;
+    bool isLeaf() const {
+      return !this->indexes.empty();
+    }
   };
 
   bool requireBuild = true;
@@ -41,7 +44,7 @@ class KDTree {
 
  public:
   explicit KDTree(const unsigned short maxDepth = 20, unsigned short maxElementsInLeaf = 8)
-      : MAX_ELEMENTS_IN_LEAF(maxElementsInLeaf), MAX_DEPTH(maxDepth), container(nullptr){};
+      : MAX_ELEMENTS_IN_LEAF(maxElementsInLeaf), MAX_DEPTH(maxDepth), container(nullptr) {};
 
   std::optional<IntersectionInformation> intersect(const Ray &ray) const;
   BoundingBox getBoundingBox() const {

@@ -22,10 +22,12 @@ enum RenderOptimization {
   BVHBucketsQueue
 };
 
+enum RenderMode { Standard, Barycentric, Textured };
+
 struct RenderOptions {
   RenderOptimization optimization = BVHBucketsThreadPool;
-  bool USE_GI = false;
   unsigned int MAX_DEPTH = 5;
+  bool USE_GI = false;
   unsigned int GI_SAMPLE_SIZE = 2;
   unsigned int RAYS_PER_PIXEL = 1;
   float SHADOW_BIAS = 1e-4;
@@ -33,20 +35,21 @@ struct RenderOptions {
   float REFRACTION_BIAS = 1e-4;
   float MONTE_CARLO_BIAS = 1e-4;
 
-  explicit RenderOptions(const RenderOptimization optimization = BVHBucketsThreadPool, const unsigned int maxDepth = 5,
-                         const bool useGI = false, const unsigned int sampleSize = 2,
-                         const unsigned int raysPerPixel = 1, const float shadowBias = 1e-4,
-                         const float reflectionBias = 1e-4, const float refractionBias = 1e-4,
-                         const float monteCarloBias = 1e-4)
-      : optimization{optimization},
-        USE_GI{useGI},
-        MAX_DEPTH{maxDepth},
-        GI_SAMPLE_SIZE{sampleSize},
-        RAYS_PER_PIXEL{raysPerPixel},
-        SHADOW_BIAS{shadowBias},
-        REFLECTION_BIAS{reflectionBias},
-        REFRACTION_BIAS{refractionBias},
-        MONTE_CARLO_BIAS{monteCarloBias} {};
+  // explicit RenderOptions(const RenderOptimization optimization = BVHBucketsThreadPool, const unsigned int maxDepth =
+  // 5,
+  //                        const bool useGI = false, const unsigned int sampleSize = 2,
+  //                        const unsigned int raysPerPixel = 1, const float shadowBias = 1e-4,
+  //                        const float reflectionBias = 1e-4, const float refractionBias = 1e-4,
+  //                        const float monteCarloBias = 1e-4)
+  //     : optimization{optimization},
+  //       USE_GI{useGI},
+  //       MAX_DEPTH{maxDepth},
+  //       GI_SAMPLE_SIZE{sampleSize},
+  //       RAYS_PER_PIXEL{raysPerPixel},
+  //       SHADOW_BIAS{shadowBias},
+  //       REFLECTION_BIAS{reflectionBias},
+  //       REFRACTION_BIAS{refractionBias},
+  //       MONTE_CARLO_BIAS{monteCarloBias} {};
 };
 
 enum BoundingBoxType { SingleBoundingBox, Tree };

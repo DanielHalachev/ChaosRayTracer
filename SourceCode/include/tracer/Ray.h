@@ -22,6 +22,5 @@ class Ray {
   Ray();
   Ray(const Vector &origin, const Vector &direction, const RayType &rayType = PrimaryRay);
 
-  // TODO (maybe move to Triangle.h)
   std::optional<Intersection> intersectWithTriangle(const Triangle &triangle) const;
 };

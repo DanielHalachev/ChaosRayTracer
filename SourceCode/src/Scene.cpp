@@ -39,9 +39,7 @@ Scene::Scene() = default;
 Scene::Scene(Scene &&other) noexcept {
   this->sceneSettings = other.sceneSettings;
   this->camera = other.camera;
-#if (defined USE_TEXTURES) && USE_TEXTURES
   this->textures = std::move(other.textures);
-#endif  // USE_TEXTURES
   this->materials = std::move(other.materials);
   this->lights = std::move(other.lights);
   this->objects = std::move(other.objects);
@@ -51,9 +49,7 @@ Scene &Scene::operator=(Scene &&other) noexcept {
   if (this != &other) {
     this->sceneSettings = other.sceneSettings;
     this->camera = other.camera;
-#if (defined USE_TEXTURES) && USE_TEXTURES
     this->textures = std::move(other.textures);
-#endif  // USE_TEXTURES
     this->materials = std::move(other.materials);
     this->lights = std::move(other.lights);
     this->objects = std::move(other.objects);
@@ -62,9 +58,7 @@ Scene &Scene::operator=(Scene &&other) noexcept {
 }
 
 Scene::~Scene() {
-#if (defined USE_TEXTURES) && USE_TEXTURES
   for (Texture *texture : this->textures) {
     delete texture;
   }
-#endif  // USE_TEXTURES
 }

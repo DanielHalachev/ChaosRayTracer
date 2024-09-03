@@ -47,22 +47,25 @@ Scene SceneParser::parseScene(const std::string& pathToScene, const std::string&
 
   SceneSettings sceneSettings = parseSceneSettings(document);
   result.sceneSettings = sceneSettings;
+
   Camera camera = parseCameraSettings(document);
   result.camera = camera;
-#if (defined USE_TEXTURES) && USE_TEXTURES
+
   std::vector<Texture*> textures = parseTextures(document, sceneFolder);
   result.textures = std::move(textures);
+
+  bool useTextures = !result.textures.empty();
+
   std::vector<Material> materials = parseMaterials(document, result.textures);
-#else
-  std::vector<Material> materials = parseMaterials(document);
-#endif  // USE_TEXTURES
   result.materials = std::move(materials);
+
   std::vector<Light> lights = parseLightSettings(document);
   result.lights = std::move(lights);
-  std::vector<Mesh> objects = parseSceneObjects(document, result.materials);
+
+  std::vector<Mesh> objects = parseSceneObjects(document, result.materials, useTextures);
   result.objects = std::move(objects);
+
   return result;
-  // return Scene{sceneSettings, camera, materials, lights, objects};
 }
 
 template <typename T>
@@ -146,67 +149,68 @@ std::vector<Light> SceneParser::parseLightSettings(const rapidjson::Document& do
   return lights;
 }
 
-#if (defined USE_TEXTURES) && USE_TEXTURES
 std::vector<Texture*> SceneParser::parseTextures(const rapidjson::Document& document, const std::string& sceneFolder) {
   std::vector<Texture*> textures;
   const rapidjson::Value& texturesValue = document.FindMember(SceneParser::TEXTURES)->value;
-  if (!texturesValue.IsNull() && texturesValue.IsArray()) {
-    textures.reserve(texturesValue.GetArray().Size());
-    for (auto& texture : texturesValue.GetArray()) {
-      const rapidjson::Value& textureTypeValue = texture.FindMember(SceneParser::TYPE)->value;
-      assert(!textureTypeValue.IsNull() && textureTypeValue.IsString());
-      const char* textureTypeString = textureTypeValue.GetString();
-      const rapidjson::Value& textureNameValue = texture.FindMember("name")->value;
-      assert(!textureNameValue.IsNull() && textureNameValue.IsString());
-      const std::string textureName = textureNameValue.GetString();
+  if (texturesValue.IsNull() || !texturesValue.IsArray()) {
+    return textures;
+  }
 
-      if (strcmp(textureTypeString, "albedo") == 0) {
-        const rapidjson::Value& textureAlbedoValue = texture.FindMember(SceneParser::ALBEDO)->value;
-        assert(!textureAlbedoValue.IsNull() && textureAlbedoValue.IsArray());
-        Albedo albedo = Albedo(loadFloatSTLVector(textureAlbedoValue.GetArray(), 3));
-        textures.push_back(new AlbedoTexture(textureName, albedo));
-      } else if (strcmp(textureTypeString, "edges") == 0) {
-        const rapidjson::Value& innerColorValue = texture.FindMember("inner_color")->value;
-        assert(!innerColorValue.IsNull() && innerColorValue.IsArray());
-        Color innerColor = Color(loadFloatSTLVector(innerColorValue.GetArray(), 3));
+  textures.reserve(texturesValue.GetArray().Size());
+  for (auto& texture : texturesValue.GetArray()) {
+    const rapidjson::Value& textureTypeValue = texture.FindMember(SceneParser::TYPE)->value;
+    assert(!textureTypeValue.IsNull() && textureTypeValue.IsString());
+    const char* textureTypeString = textureTypeValue.GetString();
+    const rapidjson::Value& textureNameValue = texture.FindMember("name")->value;
+    assert(!textureNameValue.IsNull() && textureNameValue.IsString());
+    const std::string textureName = textureNameValue.GetString();
 
-        const rapidjson::Value& edgeColorValue = texture.FindMember("edge_color")->value;
-        assert(!edgeColorValue.IsNull() && edgeColorValue.IsArray());
-        Color edgeColor = Color(loadFloatSTLVector(edgeColorValue.GetArray(), 3));
+    if (strcmp(textureTypeString, "albedo") == 0) {
+      const rapidjson::Value& textureAlbedoValue = texture.FindMember(SceneParser::ALBEDO)->value;
+      assert(!textureAlbedoValue.IsNull() && textureAlbedoValue.IsArray());
+      Albedo albedo = Albedo(loadFloatSTLVector(textureAlbedoValue.GetArray(), 3));
+      textures.push_back(new AlbedoTexture(textureName, albedo));
+    } else if (strcmp(textureTypeString, "edges") == 0) {
+      const rapidjson::Value& innerColorValue = texture.FindMember("inner_color")->value;
+      assert(!innerColorValue.IsNull() && innerColorValue.IsArray());
+      Color innerColor = Color(loadFloatSTLVector(innerColorValue.GetArray(), 3));
 
-        const rapidjson::Value& edgeWidthValue = texture.FindMember("edge_width")->value;
-        assert(!edgeWidthValue.IsNull() && edgeWidthValue.IsFloat());
-        float edgeWidth = edgeWidthValue.GetFloat();
+      const rapidjson::Value& edgeColorValue = texture.FindMember("edge_color")->value;
+      assert(!edgeColorValue.IsNull() && edgeColorValue.IsArray());
+      Color edgeColor = Color(loadFloatSTLVector(edgeColorValue.GetArray(), 3));
 
-        textures.push_back(new EdgeTexture(textureName, innerColor, edgeColor, edgeWidth));
-      } else if (strcmp(textureTypeString, "checker") == 0) {
-        const rapidjson::Value& colorValueA = texture.FindMember("color_A")->value;
-        assert(!colorValueA.IsNull() && colorValueA.IsArray());
-        Color colorA = Color(loadFloatSTLVector(colorValueA.GetArray(), 3));
+      const rapidjson::Value& edgeWidthValue = texture.FindMember("edge_width")->value;
+      assert(!edgeWidthValue.IsNull() && edgeWidthValue.IsFloat());
+      float edgeWidth = edgeWidthValue.GetFloat();
 
-        const rapidjson::Value& colorValueB = texture.FindMember("color_B")->value;
-        assert(!colorValueB.IsNull() && colorValueB.IsArray());
-        Color colorB = Color(loadFloatSTLVector(colorValueB.GetArray(), 3));
+      textures.push_back(new EdgeTexture(textureName, innerColor, edgeColor, edgeWidth));
+    } else if (strcmp(textureTypeString, "checker") == 0) {
+      const rapidjson::Value& colorValueA = texture.FindMember("color_A")->value;
+      assert(!colorValueA.IsNull() && colorValueA.IsArray());
+      Color colorA = Color(loadFloatSTLVector(colorValueA.GetArray(), 3));
 
-        const rapidjson::Value& squareSizeValue = texture.FindMember("square_size")->value;
-        assert(!squareSizeValue.IsNull() && squareSizeValue.IsFloat());
-        float squareSize = squareSizeValue.GetFloat();
+      const rapidjson::Value& colorValueB = texture.FindMember("color_B")->value;
+      assert(!colorValueB.IsNull() && colorValueB.IsArray());
+      Color colorB = Color(loadFloatSTLVector(colorValueB.GetArray(), 3));
 
-        textures.push_back(new CheckerTexture(textureName, colorA, colorB, squareSize));
-      } else if (strcmp(textureTypeString, "bitmap") == 0) {
-        const rapidjson::Value& pathValue = texture.FindMember("file_path")->value;
-        assert(!pathValue.IsNull() && pathValue.IsString());
-        std::string path = pathValue.GetString();
+      const rapidjson::Value& squareSizeValue = texture.FindMember("square_size")->value;
+      assert(!squareSizeValue.IsNull() && squareSizeValue.IsFloat());
+      float squareSize = squareSizeValue.GetFloat();
 
-        textures.push_back(new BitmapTexture(textureName, sceneFolder + path));
-      } else {
-        throw "Invalid material";
-      }
+      textures.push_back(new CheckerTexture(textureName, colorA, colorB, squareSize));
+    } else if (strcmp(textureTypeString, "bitmap") == 0) {
+      const rapidjson::Value& pathValue = texture.FindMember("file_path")->value;
+      assert(!pathValue.IsNull() && pathValue.IsString());
+      std::string path = pathValue.GetString();
+
+      textures.push_back(new BitmapTexture(textureName, sceneFolder + path));
+    } else {
+      throw "Invalid material";
     }
   }
+
   return textures;
 }
-#endif  // USE_TEXTURES
 
 std::vector<Material> SceneParser::parseMaterials(const rapidjson::Document& document,
                                                   const std::vector<Texture*>& textures) {
@@ -238,40 +242,40 @@ std::vector<Material> SceneParser::parseMaterials(const rapidjson::Document& doc
       }
       const rapidjson::Value& materialShadingValue = material.FindMember(SceneParser::MATERIAL_SHADING)->value;
       assert(!materialShadingValue.IsNull() && materialShadingValue.IsBool());
-#if (defined USE_TEXTURES) && USE_TEXTURES
-      const rapidjson::Value& textureNameValue = material.FindMember("albedo")->value;
-      assert(!textureNameValue.IsNull() && textureNameValue.IsString());
-      const std::string textureName = textureNameValue.GetString();
-      Texture* texture = nullptr;
-      for (Texture* t : textures) {
-        if (t->name == textureName) {
-          texture = t;
-          break;
+      if (textures.empty()) {
+        if (materialType != Refractive) {
+          const rapidjson::Value& materialAlbedoValue = material.FindMember(SceneParser::ALBEDO)->value;
+          assert(!materialAlbedoValue.IsNull() && materialAlbedoValue.IsArray());
+          albedo = Albedo(loadFloatSTLVector(materialAlbedoValue.GetArray(), 3));
         }
+        Material temp(albedo, materialType, materialShadingValue.GetBool(), IOR);
+        materials.push_back(temp);
+      } else {
+        const rapidjson::Value& textureNameValue = material.FindMember("albedo")->value;
+        assert(!textureNameValue.IsNull() && textureNameValue.IsString());
+        const std::string textureName = textureNameValue.GetString();
+        const Texture* texture = nullptr;
+        for (const Texture* t : textures) {
+          if (t->name == textureName) {
+            texture = t;
+            break;
+          }
+        }
+        if (materialType != Diffuse) {
+          const rapidjson::Value& materialAlbedoValue = material.FindMember(SceneParser::ALBEDO)->value;
+          assert(!materialAlbedoValue.IsNull() && materialAlbedoValue.IsArray());
+          albedo = Albedo(loadFloatSTLVector(materialAlbedoValue.GetArray(), 3));
+        }
+        Material temp(*texture, albedo, materialType, materialShadingValue.GetBool(), IOR);
+        materials.push_back(temp);
       }
-      if (materialType != Diffuse) {
-        const rapidjson::Value& materialAlbedoValue = material.FindMember(SceneParser::ALBEDO)->value;
-        assert(!materialAlbedoValue.IsNull() && materialAlbedoValue.IsArray());
-        albedo = Albedo(loadFloatSTLVector(materialAlbedoValue.GetArray(), 3));
-      }
-      Material temp(*texture, albedo, materialType, materialShadingValue.GetBool(), IOR);
-      materials.push_back(temp);
-#else
-      if (materialType != Refractive) {
-        const rapidjson::Value& materialAlbedoValue = material.FindMember(SceneParser::ALBEDO)->value;
-        assert(!materialAlbedoValue.IsNull() && materialAlbedoValue.IsArray());
-        albedo = Albedo(loadFloatSTLVector(materialAlbedoValue.GetArray(), 3));
-      }
-      Material temp(albedo, materialType, materialShadingValue.GetBool(), IOR);
-      materials.push_back(temp);
-#endif  // USE_TEXTURES
     }
   }
   return materials;
 }
 
 std::vector<Mesh> SceneParser::parseSceneObjects(const rapidjson::Document& document,
-                                                 const std::vector<Material>& materials) {
+                                                 const std::vector<Material>& materials, bool useTextures) {
   std::vector<Mesh> meshes;
 
   const rapidjson::Value& objectsValue = document.FindMember(SceneParser::SCENE_OBJECTS)->value;
@@ -295,18 +299,17 @@ std::vector<Mesh> SceneParser::parseSceneObjects(const rapidjson::Document& docu
                                          verticesValueArray[i + 2].GetFloat())));
       }
 
-#if (defined USE_TEXTURES) && USE_TEXTURES
-      const rapidjson::Value& UVsValue = object.FindMember(SceneParser::UVS)->value;
-      assert(!UVsValue.IsNull() && UVsValue.IsArray());
-      auto uvValuesArray = UVsValue.GetArray();
-      assert(uvValuesArray.Size() % 3 == 0);
-      for (size_t i = 0; i < uvValuesArray.Size(); i += 3) {
-        Vector temp =
-            Vector(uvValuesArray[i].GetFloat(), uvValuesArray[i + 1].GetFloat(), uvValuesArray[i + 2].GetFloat());
-        vertices[i / 3].UV = temp;
+      if (useTextures) {
+        const rapidjson::Value& UVsValue = object.FindMember(SceneParser::UVS)->value;
+        assert(!UVsValue.IsNull() && UVsValue.IsArray());
+        auto uvValuesArray = UVsValue.GetArray();
+        assert(uvValuesArray.Size() % 3 == 0);
+        for (size_t i = 0; i < uvValuesArray.Size(); i += 3) {
+          Vector temp =
+              Vector(uvValuesArray[i].GetFloat(), uvValuesArray[i + 1].GetFloat(), uvValuesArray[i + 2].GetFloat());
+          vertices[i / 3].UV = temp;
+        }
       }
-#endif  // USE_TEXTURES
-
       const rapidjson::Value& triangleTriplesValue = object.FindMember(SceneParser::TRIANGLES)->value;
       assert(!triangleTriplesValue.IsNull() && triangleTriplesValue.IsArray());
       auto triangleTempArray = triangleTriplesValue.GetArray();

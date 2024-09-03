@@ -5,18 +5,16 @@
 
 #include "stb_image.h"
 
-#if (defined USE_TEXTURES) && USE_TEXTURES
+Texture::Texture(const std::string &name) : name(name) {};
 
-Texture::Texture(const std::string &name) : name(name){};
-
-AlbedoTexture::AlbedoTexture(const std::string &name, const Albedo &albedo) : Texture(name), albedo(albedo){};
+AlbedoTexture::AlbedoTexture(const std::string &name, const Albedo &albedo) : Texture(name), albedo(albedo) {};
 
 const Color AlbedoTexture::getColor(const Triangle & /*triangle*/, const Vector & /*barycentricCoordinates*/) const {
   return this->albedo;
 }
 
 EdgeTexture::EdgeTexture(const std::string &name, const Color &innerColor, const Color &edgeColor, const float width)
-    : Texture(name), innerColor(innerColor), edgeColor(edgeColor), width(width){};
+    : Texture(name), innerColor(innerColor), edgeColor(edgeColor), width(width) {};
 
 const Color EdgeTexture::getColor(const Triangle & /*triangle*/, const Vector &barycentricCoordinates) const {
   if (barycentricCoordinates[0] < this->width || barycentricCoordinates[1] < this->width ||
@@ -70,4 +68,3 @@ const Color BitmapTexture::getColor(const Triangle &triangle, const Vector &bary
                      this->height - 1);
   return this->buffer[y * width + x];
 }
-#endif  // USE_TEXTURES

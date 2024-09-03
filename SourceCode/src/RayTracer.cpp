@@ -318,14 +318,10 @@ Color RayTracer::calculateDiffusion(const Ray &ray, const unsigned int depth,
 
     if (!shadowRayIntersection) {
       float directLightContribution = (static_cast<float>(light.intentsity) / sphereArea * angle);
-#if (defined USE_TEXTURES) && USE_TEXTURES
-      finalColor += directLightContribution * mesh.material.texture.getColor(
-                                                  *intersectionInformation.triangle,
-                                                  Vector(intersectionInformation.u, intersectionInformation.v,
-                                                         1.0f - intersectionInformation.u - intersectionInformation.v));
-#else
-      finalColor += directLightContribution * mesh.material.albedo;
-#endif  // USE_TEXTURE
+      finalColor += directLightContribution *
+                    mesh.material.getColor(*intersectionInformation.triangle,
+                                           Vector(intersectionInformation.u, intersectionInformation.v,
+                                                  1.0f - intersectionInformation.u - intersectionInformation.v));
     }
   }
   Color indirectLightContribution(0, 0, 0);
@@ -477,12 +473,12 @@ std::optional<IntersectionInformation> RayTracer::trace(const Ray &ray) const {
     }
   }
   if (intersectedObject != nullptr) {
-    bool calculateUV = intersectedObject->material.smoothShading;
+    bool calculateUV = intersectedObject->material.smoothShading || intersectedObject->material.hasTexture();
     float u = 0;
     float v = 0;
-#if (defined(BARYCENTRIC) && BARYCENTRIC) || (defined(USE_TEXTURES) && USE_TEXTURES)
+#if (defined(BARYCENTRIC) && BARYCENTRIC)
     calculateUV = true;
-#endif  // BARYCENTRIC || USE_TEXTURES
+#endif  // BARYCENTRIC
     if (calculateUV == true) {
       std::pair<float, float> UV = intersectedTriangle->getBarycentricCoordinates(intersection.hitPoint);
       u = UV.first;
@@ -494,12 +490,7 @@ std::optional<IntersectionInformation> RayTracer::trace(const Ray &ray) const {
       }
     }
 
-#if (defined(BARYCENTRIC) && BARYCENTRIC) || (defined(USE_TEXTURES) && USE_TEXTURES)
-    IntersectionInformation temp{intersectedObject, intersectedTriangle, intersection, u, v};
-    return temp;
-#else
-    return IntersectionInformation{intersectedObject, intersectedTriangle, intersection};
-#endif  // BARYCENTRIC
+    return IntersectionInformation{intersectedObject, intersectedTriangle, intersection, u, v};
   }
   return {};
 }

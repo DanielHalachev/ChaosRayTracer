@@ -15,6 +15,7 @@ struct SceneSettings {
   Color sceneBackgroundColor;
   Image image;
   unsigned int bucketSize = 1;
+  bool hasTextures = false;
 };
 
 struct Light {
@@ -41,18 +42,14 @@ struct IntersectionInformation {
   const Mesh *object;
   const Triangle *triangle;
   Intersection intersection;
-#if (defined(BARYCENTRIC) && BARYCENTRIC) || (defined(USE_TEXTURES) && USE_TEXTURES)
-  float u;
-  float v;
-#endif  // BARYCENTRIC
+  float u = 0;
+  float v = 0;
 };
 
 struct Scene {
   SceneSettings sceneSettings;
   Camera camera;
-#if (defined USE_TEXTURES) && USE_TEXTURES
   std::vector<Texture *> textures;
-#endif  // USE_TEXTUTES
   std::vector<Material> materials;
   std::vector<Light> lights;
   std::vector<Mesh> objects;
