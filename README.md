@@ -1,2 +1,5 @@
-# Homework
-Source repository for the home work task of the members of the Chaos Ray Tracing course
+# Chaos Ray Tracer
+A fork of my ray tracer course project at Chaos. 
+## Improvements
+- added texture support without using preprocessor macros
+- replaced dynamic polymorphism of textures with variants
